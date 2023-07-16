@@ -1,0 +1,64 @@
+{{- range $i := until (.Values.replicaCount|int) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caster-config-{{ $i }}
+  labels:
+    app: caster
+data:
+  config.yaml: |
+    nodes:
+      {{- range $j := until ($.Values.replicaCount|int) }}
+      - index: {{ $j }}
+        {{- if eq $i $j }}
+        address: "local_host"
+        isLocal: true
+        {{- else }}
+        address: "http://caster-svc-{{ $j }}:{{ $.Values.config.port }}"
+        isLocal: false
+        {{- end }}
+      {{- end }}
+
+    caster:
+      port: {{ $.Values.config.port }}
+      debug: {{ $.Values.config.caster.debug }}
+      capacity: {{ $.Values.config.caster.capacity }}
+
+---
+{{- end }}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caster-nginx-config
+  labels:
+    app: caster-nginx
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes 1;
+
+    events {
+      worker_connections {{ .Values.config.nginx.workerConnections }};
+    }
+
+    http {
+      access_log /var/log/nginx/access.log;
+      error_log /var/log/nginx/error.log;
+
+      upstream backend {
+        {{- range $i := until (.Values.replicaCount|int) }}
+        server caster-svc-{{ $i }}:{{ $.Values.config.port }};
+        {{- end }}
+      }
+
+      server {
+        listen {{ .Values.config.port }};
+          
+        location / {
+            proxy_pass http://backend;
+        }
+      }
+    }
+
+---

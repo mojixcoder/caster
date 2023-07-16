@@ -1,0 +1,17 @@
+replicaCount: 2
+
+nginxReplicaCount: 1
+
+config:
+  path: "/etc/caster"
+  port: 2376
+
+  caster:
+    debug: false
+    capacity: 16384
+
+  nginx:
+    port:
+    workerConnections: 16384
+
+  

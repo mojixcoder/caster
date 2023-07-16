@@ -1,0 +1,31 @@
+{{- range $i := until (.Values.replicaCount|int) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: caster-svc-{{ $i }}
+  labels:
+    app: caster
+spec:
+  selector:
+    name: caster-pod-{{ $i }}
+  ports:
+    - protocol: TCP
+      port: {{ $.Values.config.port }}
+      targetPort: {{ $.Values.config.port }}
+
+---
+{{- end }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+  labels:
+    app: caster-nginx
+spec:
+  selector:
+    name: caster-nginx
+  ports:
+    - protocol: TCP
+      port: {{ $.Values.config.port }}
+      targetPort: {{ $.Values.config.port }}
