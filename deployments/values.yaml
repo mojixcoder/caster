@@ -12,5 +12,3 @@ config:
 
   nginx:
     workerConnections: 16384
-
-  
