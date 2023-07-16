@@ -6,6 +6,7 @@ metadata:
   labels:
     app: caster
 spec:
+  type: ClusterIP
   selector:
     name: caster-pod-{{ $i }}
   ports:
@@ -23,6 +24,7 @@ metadata:
   labels:
     app: caster-nginx
 spec:
+  type: ClusterIP
   selector:
     name: caster-nginx
   ports:
