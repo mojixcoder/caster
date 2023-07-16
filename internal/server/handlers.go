@@ -25,7 +25,7 @@ type (
 )
 
 var (
-	EmptyResponse = []byte("{\"message\":\"ok\"}")
+	EmptyResponse = []byte("{\"message\":\"ok\"}\n")
 
 	ErrInternal = kid.Map{"message": "internal error"}
 
