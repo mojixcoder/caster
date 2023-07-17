@@ -25,6 +25,8 @@ type Server struct {
 
 // RunServer runs the server.
 func (s *Server) RunServer() error {
+	s.kid.ApplyOptions(kid.WithDebug(app.App.Config.Caster.Debug))
+
 	s.kid.Use(middlewares.NewRecoveryWithConfig(middlewares.RecoveryConfig{
 		OnRecovery: func(c *kid.Context, err any) {
 			app.App.Logger.Error("panic recovered", zap.Any("reason", err))
@@ -36,8 +38,6 @@ func (s *Server) RunServer() error {
 
 	port := fmt.Sprintf(":%d", app.App.Config.Caster.Port)
 	app.App.Logger.Info("running server", zap.String("address", "0.0.0.0"+port))
-
-	s.kid.ApplyOptions(kid.WithDebug(app.App.Config.Caster.Debug))
 
 	return s.kid.Run(port)
 }
