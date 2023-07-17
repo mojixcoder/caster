@@ -89,6 +89,20 @@ func (c Cluster) GetNodeFromKey(key string) Node {
 	return c.nodeMap[int(sum)]
 }
 
+// Nodes returns a copy of non-local nodes.
+func (c Cluster) NonLocalNodes() map[int]Node {
+	nodes := make(map[int]Node, len(c.nodeMap))
+
+	for k, v := range c.nodeMap {
+		if v.IsLocal() {
+			continue
+		}
+		nodes[k] = v
+	}
+
+	return nodes
+}
+
 // NewCluster returns a new memberlist cluster.
 func NewCluster() (Cluster, error) {
 	var cluster Cluster

@@ -3,12 +3,16 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/mojixcoder/caster/internal/app"
 	"github.com/mojixcoder/caster/internal/cache"
+	"github.com/mojixcoder/caster/internal/cluster"
 	"github.com/mojixcoder/kid"
 	"go.uber.org/zap"
 )
@@ -38,6 +42,7 @@ var (
 func (s Server) initHandlers() {
 	s.kid.Get("/get", s.GetFromCache)
 	s.kid.Post("/set", s.SetToCache)
+	s.kid.Get("/flush", s.FlushCache)
 }
 
 func (s Server) mergeAddressAndPath(address, path string) string {
@@ -172,4 +177,49 @@ func (s Server) SetToCache(c *kid.Context) {
 		c.SetResponseHeader("Content-Type", res.Header.Get("Content-Type"))
 		c.Byte(res.StatusCode, bytes)
 	}
+}
+
+// FlushCache clears cache.
+func (s Server) FlushCache(c *kid.Context) {
+	flushAll, _ := strconv.ParseBool(c.QueryParam("all"))
+
+	if err := s.cache.Flush(); err != nil {
+		app.App.Logger.Error("error in flushing cache", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, ErrInternal)
+		return
+	}
+
+	if flushAll {
+		app.App.Logger.Debug("flushing other nodes")
+
+		nodes := s.cluster.NonLocalNodes()
+		var wg sync.WaitGroup
+		var i int
+		errs := make([]error, len(nodes))
+
+		wg.Add(len(nodes))
+		for _, node := range nodes {
+			go func(i int, node cluster.Node) {
+				defer wg.Done()
+
+				_, err := http.Get(s.mergeAddressAndPath(node.Address(), "/flush?all=false"))
+				errs[i] = err
+			}(i, node)
+			i++
+		}
+		wg.Wait()
+
+		if err := errors.Join(errs...); err != nil {
+			app.App.Logger.Error(
+				"flushing cache of some nodes failed",
+				zap.Error(err),
+				zap.String("path", "/flush"),
+			)
+			c.JSON(http.StatusInternalServerError, ErrInternal)
+			return
+		}
+	}
+
+	c.SetResponseHeader("Content-Type", "application/json")
+	c.Byte(http.StatusOK, EmptyResponse)
 }
