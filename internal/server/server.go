@@ -2,11 +2,13 @@ package server
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/mojixcoder/caster/internal/app"
 	"github.com/mojixcoder/caster/internal/cache"
 	"github.com/mojixcoder/caster/internal/cluster"
 	"github.com/mojixcoder/kid"
+	"github.com/mojixcoder/kid/middlewares"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +25,13 @@ type Server struct {
 
 // RunServer runs the server.
 func (s *Server) RunServer() error {
+	s.kid.Use(middlewares.NewRecoveryWithConfig(middlewares.RecoveryConfig{
+		OnRecovery: func(c *kid.Context, err any) {
+			app.App.Logger.Error("panic recovered", zap.Any("reason", err))
+			c.JSON(http.StatusInternalServerError, ErrInternal)
+		},
+	}))
+
 	s.initHandlers()
 
 	port := fmt.Sprintf(":%d", app.App.Config.Caster.Port)
