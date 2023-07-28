@@ -2,6 +2,8 @@ replicaCount: 2
 
 nginxReplicaCount: 1
 
+imageTag: 0.0.1
+
 config:
   path: "/etc/caster"
   port: 2376

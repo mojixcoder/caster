@@ -9,7 +9,7 @@ metadata:
 spec:
   containers:
     - name: caster
-      image: mojixcoder/caster:latest
+      image: mojixcoder/caster:{{ $.Values.imageTag }}
       command:
         - ./caster
         - run
