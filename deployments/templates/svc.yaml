@@ -46,27 +46,49 @@ spec:
     name: jaeger
     app: jaeger-all-in-one
   ports:
-    - containerPort: 5775
+    - port: 5775
+      targetPort: 5775
+      name: "port1"
       protocol: UDP
-    - containerPort: 6831
+    - port: 6831
+      targetPort: 6831
+      name: "port2"
       protocol: UDP
-    - containerPort: 6832
+    - port: 6832
+      targetPort: 6832
+      name: "port3"
       protocol: UDP
-    - containerPort: 5778
+    - port: 5778
+      targetPort: 5778
+      name: "port4"
       protocol: TCP
-    - containerPort: 16686
+    - port: 16686
+      targetPort: 16686
+      name: "port5"
       protocol: TCP
-    - containerPort: 14250
+    - port: 14250
+      targetPort: 14250
+      name: "port6"
       protocol: TCP
-    - containerPort: 14268
+    - port: 14268
+      targetPort: 14268
+      name: "port7"
       protocol: TCP
-    - containerPort: 14269
+    - port: 14269
+      targetPort: 14269
+      name: "port8"
       protocol: TCP
-    - containerPort: 4317
+    - port: 4317
+      targetPort: 4317
+      name: "port9"
       protocol: TCP
-    - containerPort: 4318
+    - port: 4318
+      targetPort: 4318
+      name: "port10"
       protocol: TCP
-    - containerPort: 9411
+    - port: 9411
+      targetPort: 9411
+      name: "port11"
       protocol: TCP
 
 ---

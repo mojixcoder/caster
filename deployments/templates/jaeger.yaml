@@ -13,8 +13,9 @@ spec:
   replicas: 1
   template:
     metadata:
-      name: jaeger
-      app: jaeger-all-in-one
+      labels:
+        name: jaeger
+        app: jaeger-all-in-one
     spec:
       containers:
         - name: jaeger
@@ -44,7 +45,7 @@ spec:
               protocol: TCP
           env:
             - name: COLLECTOR_ZIPKIN_HTTP_PORT
-              value: 9411
+              value: "9411"
           resources:
             limits:
               memory: 200Mi
