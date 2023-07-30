@@ -14,3 +14,9 @@ config:
 
   nginx:
     workerConnections: 16384
+
+  tracer:
+    fraction: 1
+    jaegerAgent:
+      host: jaeger-svc
+      port: 6831

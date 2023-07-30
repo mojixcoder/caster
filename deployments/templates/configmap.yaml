@@ -24,6 +24,13 @@ data:
       debug: {{ $.Values.config.caster.debug }}
       capacity: {{ $.Values.config.caster.capacity }}
 
+    tracer:
+      name: "caster"
+      fraction: {{ $.Values.config.tracer.fraction }}
+      jaegerAgent:
+        host: {{ $.Values.config.tracer.jaegerAgent.host }}
+        port: {{ $.Values.config.tracer.jaegerAgent.port }}
+
 ---
 {{- end }}
 

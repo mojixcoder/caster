@@ -31,3 +31,42 @@ spec:
     - protocol: TCP
       port: {{ $.Values.config.port }}
       targetPort: {{ $.Values.config.port }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-svc
+  labels:
+    app: jaeger
+spec:
+  type: ClusterIP
+  selector:
+    name: jaeger
+    app: jaeger-all-in-one
+  ports:
+    - containerPort: 5775
+      protocol: UDP
+    - containerPort: 6831
+      protocol: UDP
+    - containerPort: 6832
+      protocol: UDP
+    - containerPort: 5778
+      protocol: TCP
+    - containerPort: 16686
+      protocol: TCP
+    - containerPort: 14250
+      protocol: TCP
+    - containerPort: 14268
+      protocol: TCP
+    - containerPort: 14269
+      protocol: TCP
+    - containerPort: 4317
+      protocol: TCP
+    - containerPort: 4318
+      protocol: TCP
+    - containerPort: 9411
+      protocol: TCP
+
+---
