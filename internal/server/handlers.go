@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -14,6 +15,10 @@ import (
 	"github.com/mojixcoder/caster/internal/cache"
 	"github.com/mojixcoder/caster/internal/cluster"
 	"github.com/mojixcoder/kid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	tracesdk "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -36,13 +41,17 @@ var (
 	ErrNotFound = kid.Map{"message": "not found"}
 
 	ErrKeyRequired = kid.Map{"message": "key is required."}
+
+	ErrNoKey = errors.New("key is required")
 )
 
 // initHandlers initializes HTTP handlers.
 func (s Server) initHandlers() {
-	s.kid.Get("/get", s.GetFromCache)
-	s.kid.Post("/set", s.SetToCache)
-	s.kid.Get("/flush", s.FlushCache)
+	g := s.kid.Group("", NewTraceMiddleware())
+
+	g.Get("/get", s.GetFromCache)
+	g.Post("/set", s.SetToCache)
+	g.Get("/flush", s.FlushCache)
 }
 
 func (s Server) mergeAddressAndPath(address, path string) string {
@@ -50,29 +59,48 @@ func (s Server) mergeAddressAndPath(address, path string) string {
 	return address + path
 }
 
+func getSpan(c *kid.Context, name string) tracesdk.Span {
+	extractedCtx, _ := c.Get("ctx")
+	ctx := extractedCtx.(context.Context)
+
+	_, span := otel.Tracer(app.App.Config.Tracer.Name).Start(ctx, name)
+	return span
+}
+
 // GetFromCache gets a key from cache.
 func (s Server) GetFromCache(c *kid.Context) {
+	span := getSpan(c, "get_from_cache")
+	defer span.End()
+
 	key := c.QueryParam("key")
 	if key == "" {
+		span.RecordError(ErrNoKey)
 		c.JSON(http.StatusBadRequest, ErrKeyRequired)
 		return
 	}
 
 	node := s.cluster.GetNodeFromKey(key)
+	isLocal := node.IsLocal()
 
-	switch node.IsLocal() {
+	span.SetAttributes(attribute.Bool("is_local", isLocal))
+
+	switch isLocal {
 	// Is local node.
 	case true:
 		val, err := s.cache.Get(key)
 		if err != nil {
 			if err == cache.ErrNotFound {
 				c.JSON(http.StatusNotFound, ErrNotFound)
+				span.SetAttributes(attribute.Bool("key_found", false))
 				return
 			}
 			app.App.Logger.Error("error in getting key from cache", zap.Error(err))
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "error in getting key from cache")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
+		span.SetAttributes(attribute.Bool("key_found", true))
 
 		res := GetResponse{Value: val}
 		c.JSON(http.StatusOK, &res)
@@ -89,6 +117,8 @@ func (s Server) GetFromCache(c *kid.Context) {
 				zap.String("path", "/get"),
 				zap.Error(err),
 			)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "error in calling a cluster member")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
@@ -102,6 +132,8 @@ func (s Server) GetFromCache(c *kid.Context) {
 				zap.String("path", "/get"),
 				zap.Error(err),
 			)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "error in reading response body")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
@@ -113,25 +145,35 @@ func (s Server) GetFromCache(c *kid.Context) {
 
 // SetToCache sets a key-value pair to cache.
 func (s Server) SetToCache(c *kid.Context) {
+	span := getSpan(c, "set_to_cache")
+	defer span.End()
+
 	var req SetRequest
 	if err := c.ReadJSON(&req); err != nil {
 		app.App.Logger.Error("error in reading request body", zap.Error(err))
+		span.RecordError(err)
 		c.JSON(http.StatusBadRequest, kid.Map{"message": err.Error()})
 		return
 	}
 
 	if req.Key == "" {
+		span.RecordError(ErrNoKey)
 		c.JSON(http.StatusBadRequest, ErrKeyRequired)
 		return
 	}
 
 	node := s.cluster.GetNodeFromKey(req.Key)
+	isLocal := node.IsLocal()
 
-	switch node.IsLocal() {
+	span.SetAttributes(attribute.Bool("is_local", isLocal))
+
+	switch isLocal {
 	// Is local node.
 	case true:
 		if err := s.cache.Set(req.Key, req.Value); err != nil {
 			app.App.Logger.Error("error in setting key to the cache", zap.Error(err))
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "error in setting key to the cache")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
@@ -157,6 +199,8 @@ func (s Server) SetToCache(c *kid.Context) {
 				zap.String("path", "/set"),
 				zap.Error(err),
 			)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "error in calling a cluster member")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
@@ -170,6 +214,8 @@ func (s Server) SetToCache(c *kid.Context) {
 				zap.String("path", "/set"),
 				zap.Error(err),
 			)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "error in reading response body")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
@@ -181,7 +227,12 @@ func (s Server) SetToCache(c *kid.Context) {
 
 // FlushCache clears cache.
 func (s Server) FlushCache(c *kid.Context) {
+	span := getSpan(c, "get_from_cache")
+	defer span.End()
+
 	flushAll, _ := strconv.ParseBool(c.QueryParam("all"))
+
+	span.SetAttributes(attribute.Bool("flush_all", flushAll))
 
 	if err := s.cache.Flush(); err != nil {
 		app.App.Logger.Error("error in flushing cache", zap.Error(err))
@@ -211,10 +262,12 @@ func (s Server) FlushCache(c *kid.Context) {
 
 		if err := errors.Join(errs...); err != nil {
 			app.App.Logger.Error(
-				"flushing cache of some nodes failed",
+				"flushing the cache of some nodes failed",
 				zap.Error(err),
 				zap.String("path", "/flush"),
 			)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "flushing the cache of some nodes failed")
 			c.JSON(http.StatusInternalServerError, ErrInternal)
 			return
 		}
