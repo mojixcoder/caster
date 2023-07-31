@@ -27,15 +27,9 @@ type CasterConfig struct {
 
 // TracerConfig hold tracer configurations.
 type TracerConfig struct {
-	Name        string  `default:"caster"`
-	Fraction    float64 `default:"1"`
-	JeagerAgent JaegerAgentConfig
-}
-
-// JaegerAgentConfig is the Jaeger agent's config.
-type JaegerAgentConfig struct {
-	Host string
-	Port string `default:"6831"`
+	Name             string  `default:"caster"`
+	Fraction         float64 `default:"1"`
+	CollectorAddress string
 }
 
 // Load loads the configuration.

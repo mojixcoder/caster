@@ -2,7 +2,7 @@ replicaCount: 2
 
 nginxReplicaCount: 1
 
-imageTag: v0.0.2-rc3
+imageTag: v0.0.2-rc5
 
 config:
   path: "/etc/caster"
@@ -17,6 +17,4 @@ config:
 
   tracer:
     fraction: 1
-    jaegerAgent:
-      host: jaeger-svc
-      port: 6831
+    collectorAddress: "http://jaeger-svc:14268/api/traces"
