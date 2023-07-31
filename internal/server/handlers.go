@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -59,17 +60,23 @@ func (s Server) mergeAddressAndPath(address, path string) string {
 	return address + path
 }
 
-func getSpan(c *kid.Context, name string) tracesdk.Span {
+func getSpan(c *kid.Context, name string) (context.Context, tracesdk.Span) {
 	extractedCtx, _ := c.Get("ctx")
 	ctx := extractedCtx.(context.Context)
 
-	_, span := otel.Tracer(app.App.Config.Tracer.Name).Start(ctx, name)
-	return span
+	ctx, span := otel.Tracer(app.App.Config.Tracer.Name).Start(ctx, name)
+	return ctx, span
+}
+
+func injectReq(ctx context.Context, req *http.Request) *http.Request {
+	req = req.WithContext(ctx)
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	return req
 }
 
 // GetFromCache gets a key from cache.
 func (s Server) GetFromCache(c *kid.Context) {
-	span := getSpan(c, "get_from_cache")
+	ctx, span := getSpan(c, "get_from_cache")
 	defer span.End()
 
 	key := c.QueryParam("key")
@@ -109,7 +116,10 @@ func (s Server) GetFromCache(c *kid.Context) {
 	case false:
 		app.App.Logger.Debug("getting key from another node", zap.String("node", node.Address()))
 
-		res, err := http.Get(s.mergeAddressAndPath(node.Address(), "/get") + "?key=" + key)
+		req, _ := http.NewRequest(http.MethodGet, s.mergeAddressAndPath(node.Address(), "/get")+"?key="+key, nil)
+		req = injectReq(ctx, req)
+
+		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			app.App.Logger.Error(
 				"error in calling a cluster member",
@@ -145,7 +155,7 @@ func (s Server) GetFromCache(c *kid.Context) {
 
 // SetToCache sets a key-value pair to cache.
 func (s Server) SetToCache(c *kid.Context) {
-	span := getSpan(c, "set_to_cache")
+	ctx, span := getSpan(c, "set_to_cache")
 	defer span.End()
 
 	var req SetRequest
@@ -187,11 +197,10 @@ func (s Server) SetToCache(c *kid.Context) {
 
 		jsonBytes, _ := json.Marshal(&req)
 
-		res, err := http.Post(
-			s.mergeAddressAndPath(node.Address(), "/set"),
-			"application/json",
-			bytes.NewBuffer(jsonBytes),
-		)
+		req, _ := http.NewRequest(http.MethodPost, s.mergeAddressAndPath(node.Address(), "/set"), bytes.NewBuffer(jsonBytes))
+		req = injectReq(ctx, req)
+
+		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			app.App.Logger.Error(
 				"error in calling a cluster member",
@@ -227,7 +236,7 @@ func (s Server) SetToCache(c *kid.Context) {
 
 // FlushCache clears cache.
 func (s Server) FlushCache(c *kid.Context) {
-	span := getSpan(c, "get_from_cache")
+	ctx, span := getSpan(c, "get_from_cache")
 	defer span.End()
 
 	flushAll, _ := strconv.ParseBool(c.QueryParam("all"))
@@ -253,7 +262,10 @@ func (s Server) FlushCache(c *kid.Context) {
 			go func(i int, node cluster.Node) {
 				defer wg.Done()
 
-				_, err := http.Get(s.mergeAddressAndPath(node.Address(), "/flush?all=false"))
+				req, _ := http.NewRequest(http.MethodGet, s.mergeAddressAndPath(node.Address(), "/flush?all=false"), nil)
+				req = injectReq(ctx, req)
+
+				_, err := http.DefaultClient.Do(req)
 				errs[i] = err
 			}(i, node)
 			i++
