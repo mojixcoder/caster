@@ -72,7 +72,7 @@ spec:
       protocol: TCP
     - port: 14268
       targetPort: 14268
-      name: "jaeger-collector-zipkin"
+      name: "port7"
       protocol: TCP
     - port: 14269
       targetPort: 14269
