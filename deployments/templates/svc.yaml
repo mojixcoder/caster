@@ -48,23 +48,23 @@ spec:
   ports:
     - port: 5775
       targetPort: 5775
-      name: "port1"
+      name: "agent-zipkin-thrift"
       protocol: UDP
     - port: 6831
       targetPort: 6831
-      name: "port2"
+      name: "agent-compact"
       protocol: UDP
     - port: 6832
       targetPort: 6832
-      name: "port3"
+      name: "agent-binary"
       protocol: UDP
     - port: 5778
       targetPort: 5778
-      name: "port4"
+      name: "agent-configs"
       protocol: TCP
     - port: 16686
       targetPort: 16686
-      name: "port5"
+      name: "query-http"
       protocol: TCP
     - port: 14250
       targetPort: 14250
@@ -72,11 +72,11 @@ spec:
       protocol: TCP
     - port: 14268
       targetPort: 14268
-      name: "port7"
+      name: "jaeger-collector-zipkin"
       protocol: TCP
     - port: 14269
       targetPort: 14269
-      name: "port8"
+      name: "readiness"
       protocol: TCP
     - port: 4317
       targetPort: 4317
@@ -88,7 +88,7 @@ spec:
       protocol: TCP
     - port: 9411
       targetPort: 9411
-      name: "port11"
+      name: "jaeger-collector-zipkin"
       protocol: TCP
 
 ---
