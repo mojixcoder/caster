@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/mojixcoder/caster/internal/config"
+	"github.com/mojixcoder/caster/internal/tracer"
 	"github.com/mojixcoder/caster/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -41,6 +42,10 @@ func Init() {
 	logger, err := logger.New("caster", cfg.Caster.Debug)
 	if err != nil {
 		panic("error in creating logger, reason: " + err.Error())
+	}
+
+	if err := tracer.InitTraceProvider(cfg.Tracer); err != nil {
+		panic("error in creating tracer, reason: " + err.Error())
 	}
 
 	app.Logger = logger

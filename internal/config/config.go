@@ -8,6 +8,7 @@ import (
 type AppConfig struct {
 	Caster *CasterConfig
 	Nodes  []NodeConfig
+	Tracer TracerConfig
 }
 
 // NodeConfig holds nodes configurations.
@@ -22,6 +23,13 @@ type CasterConfig struct {
 	Capacity uint64 `default:"16384"`
 	Port     int    `default:"2376"`
 	Debug    bool   `default:"false"`
+}
+
+// TracerConfig hold tracer configurations.
+type TracerConfig struct {
+	Name             string  `default:"caster"`
+	Fraction         float64 `default:"1"`
+	CollectorAddress string
 }
 
 // Load loads the configuration.

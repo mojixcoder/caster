@@ -24,6 +24,11 @@ data:
       debug: {{ $.Values.config.caster.debug }}
       capacity: {{ $.Values.config.caster.capacity }}
 
+    tracer:
+      name: "caster"
+      fraction: {{ $.Values.config.tracer.fraction }}
+      collectorAddress: {{ $.Values.config.tracer.collectorAddress }}
+
 ---
 {{- end }}
 
