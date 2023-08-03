@@ -1,0 +1,79 @@
+{{- range $i := until (.Values.caster.size|int) }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: caster-{{ $i }}
+  labels:
+    instance: caster
+    name: caster-{{ $i }}
+spec:
+  containers:
+    - name: caster
+      image: mojixcoder/caster:{{ $.Values.caster.imageTag }}
+      args:
+        - --config
+        - {{ $.Values.caster.configPath }}
+      ports:
+        - name: http
+          containerPort: {{ $.Values.caster.port }}
+          protocol: TCP
+      volumeMounts:
+        - name: config
+          mountPath: {{ $.Values.caster.configPath }}
+          readOnly: true
+      resources:
+        limits:
+          memory: {{ $.Values.caster.memory }}
+          cpu: {{ $.Values.caster.cpu }}
+  volumes:
+    - name: config
+      configMap:
+        name: caster-config-{{ $i }}
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caster-config-{{ $i }}
+  labels:
+    app: caster
+data:
+  config.yaml: |
+    nodes:
+      {{- range $j := until ($.Values.caster.size|int) }}
+      - index: {{ $j }}
+        address: "http://caster-svc-{{ $j }}:{{ $.Values.caster.port }}"
+        {{- if eq $i $j }}
+        isLocal: true
+        {{- else }}
+        isLocal: false
+        {{- end }}
+      {{- end }}
+
+    caster:
+      port: {{ $.Values.caster.port }}
+      debug: {{ $.Values.caster.config.debug }}
+      capacity: {{ $.Values.caster.config.capacity }}
+
+    tracer:
+      name: "caster"
+      fraction: {{ $.Values.caster.config.tracer.fraction }}
+      collectorAddress: {{ $.Values.caster.config.tracer.collectorAddress }}
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: caster-svc-{{ $i }}
+  labels:
+    app: caster
+spec:
+  type: ClusterIP
+  selector:
+    name: caster-{{ $i }}
+  ports:
+    - protocol: TCP
+      port: {{ $.Values.caster.port }}
+      targetPort: {{ $.Values.caster.port }}
+---
+{{- end }}

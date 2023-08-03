@@ -1,69 +1,7 @@
-{{- range $i := until (.Values.replicaCount|int) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: caster-config-{{ $i }}
-  labels:
-    app: caster
+  name: {{ .Values.configMap.name }}
+  labels: {{ toYaml .Values.configMap.labels | nindent 4 }}
 data:
-  config.yaml: |
-    nodes:
-      {{- range $j := until ($.Values.replicaCount|int) }}
-      - index: {{ $j }}
-        {{- if eq $i $j }}
-        address: "local_host"
-        isLocal: true
-        {{- else }}
-        address: "http://caster-svc-{{ $j }}:{{ $.Values.config.port }}"
-        isLocal: false
-        {{- end }}
-      {{- end }}
-
-    caster:
-      port: {{ $.Values.config.port }}
-      debug: {{ $.Values.config.caster.debug }}
-      capacity: {{ $.Values.config.caster.capacity }}
-
-    tracer:
-      name: "caster"
-      fraction: {{ $.Values.config.tracer.fraction }}
-      collectorAddress: {{ $.Values.config.tracer.collectorAddress }}
-
----
-{{- end }}
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: caster-nginx-config
-  labels:
-    app: caster-nginx
-data:
-  nginx.conf: |
-    user nginx;
-    worker_processes 1;
-
-    events {
-      worker_connections {{ .Values.config.nginx.workerConnections }};
-    }
-
-    http {
-      access_log /var/log/nginx/access.log;
-      error_log /var/log/nginx/error.log;
-
-      upstream backend {
-        {{- range $i := until (.Values.replicaCount|int) }}
-        server caster-svc-{{ $i }}:{{ $.Values.config.port }};
-        {{- end }}
-      }
-
-      server {
-        listen {{ .Values.config.port }};
-          
-        location / {
-            proxy_pass http://backend;
-        }
-      }
-    }
-
----
+  {{ .Values.configMap.key }}: {{ .Values.configMap.value | nindent 4 }}

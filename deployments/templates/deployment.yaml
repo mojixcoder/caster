@@ -1,0 +1,75 @@
+{{- range $_, $deployment := .Values.deployments }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $deployment.name }}
+  labels: {{ toYaml $deployment.labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels: {{ toYaml $deployment.labels | nindent 6 }}
+  replicas: {{ $deployment.replicaCount }}
+  template:
+    metadata:
+      labels: {{ toYaml $deployment.labels | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ $deployment.name }}
+          image: {{ $deployment.image }}
+          ports:
+          {{- range $_, $p := $deployment.ports }}
+            - containerPort: {{ $p.port }}
+              {{- if $p.name }}
+              name: {{ $p.name }}
+              {{- end }}
+              protocol: {{ default "TCP" $p.protocol }}
+          {{- end }}
+          {{- if $deployment.envs }}
+          env:
+          {{- range $_, $env := $deployment.envs }}
+            - name: {{ $env.name }}
+              value: {{ $env.value }}
+          {{- end }}
+          {{- end }}
+          {{- if $deployment.volumes }}
+          volumeMounts:
+            {{- range $_, $volume := $deployment.volumes }}
+            - name: {{ $volume.name }}
+              mountPath: {{ $volume.mountPath }}
+            {{- end }}
+          {{- end }}
+          resources:
+            limits:
+              cpu: {{ $deployment.resources.cpu }}
+              memory: {{ $deployment.resources.memory }}
+      {{- if $deployment.volumes }}
+      volumes:    
+      {{- range $_, $volume := $deployment.volumes }}
+        - name: {{ $volume.name }}
+          {{- if $volume.emptyDir }}
+          emptyDir: {}
+          {{- else }}
+          configMap:
+            name: {{ $volume.configMapName }}
+          {{- end }}
+      {{- end }}
+      {{- end }}
+---
+
+{{- if $deployment.expose }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $deployment.name }}-svc
+spec:
+  type: ClusterIP
+  selector: {{ toYaml $deployment.labels | nindent 4 }}
+  ports:
+  {{- range $_, $p := $deployment.ports }}
+    - port: {{ $p.port }}
+      targetPort: {{ $p.port }}
+      name: {{ $p.name }}
+      protocol: {{ default "TCP" $p.protocol }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

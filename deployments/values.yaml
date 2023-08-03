@@ -1,20 +1,105 @@
-replicaCount: 2
-
-nginxReplicaCount: 1
-
-imageTag: v0.0.2
-
-config:
-  path: "/etc/caster"
+caster:
+  cpu: 100m
+  memory: 100Mi
+  size: 2
+  imageTag: 0.0.2
+  configPath: "/etc/caster"
   port: 2376
-
-  caster:
+  config:
     debug: false
     capacity: 16384
+    tracer:
+      fraction: 1
+      collectorAddress: "http://jaeger-svc:14268/api/traces"
 
-  nginx:
-    workerConnections: 16384
+deployments:
+  - name: nginx
+    replicaCount: 1
+    expose: true
+    labels:
+      app: nginx
+      instance: caster
+    image: nginx:1.25
+    resources:
+      cpu: 100m
+      memory: 100Mi
+    ports:
+      - name: http
+        port: 2376
+    volumes:
+      - name: config
+        mountPath: /etc/nginx
+        configMapName: nginx-config
+      - name: log
+        mountPath: /var/log/nginx
+        emptyDir: true
+  - name: jaeger
+    replicaCount: 1
+    expose: true
+    labels:
+      app: jaeger
+      instance: jaeger-all-in-one
+    image: jaegertracing/all-in-one:1.47
+    resources:
+      cpu: 100m
+      memory: 100Mi
+    envs:
+      - name: COLLECTOR_ZIPKIN_HTTP_PORT
+        value: "9411"
+    ports:
+      - name: "agent-zipkin-thrift"
+        port: 5775
+        protocol: UDP
+      - name: "agent-compact"
+        port: 6831
+        protocol: UDP
+      - name: "agent-binary"
+        port: 6832
+        protocol: UDP
+      - name: "agent-configs"
+        port: 5778
+      - name: "query-http"
+        port: 16686
+      - name: "model-proto"
+        port: 14250
+      - name: "liveness"
+        port: 14268
+      - name: "readiness"
+        port: 14269
+      - name: "oltp-grpc"
+        port: 4317
+      - name: "oltp-http"
+        port: 4318
+      - name: "jaeger-collector-zipkin"
+        port: 9411
+      
+configMap:
+  name: nginx-config
+  labels:
+    app: nginx
+  key: nginx.conf
+  value: |
+    user nginx;
+    worker_processes 1;
 
-  tracer:
-    fraction: 1
-    collectorAddress: "http://jaeger-svc:14268/api/traces"
+    events {
+      worker_connections 16384;
+    }
+
+    http {
+      access_log /var/log/nginx/access.log;
+      error_log /var/log/nginx/error.log;
+
+      upstream backend {
+        server caster-svc-0:2376;
+        server caster-svc-1:2376;
+      }
+
+      server {
+        listen 2376;
+          
+        location / {
+            proxy_pass http://backend;
+        }
+      }
+    }
