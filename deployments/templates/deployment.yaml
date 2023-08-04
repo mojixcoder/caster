@@ -27,7 +27,7 @@ spec:
           env:
           {{- range $_, $env := $deployment.envs }}
             - name: {{ $env.name }}
-              value: {{ $env.value }}
+              value: {{ $env.value | quote }}
           {{- end }}
           {{- end }}
           {{- if $deployment.volumes }}

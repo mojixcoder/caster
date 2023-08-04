@@ -36,7 +36,7 @@ func Init() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		panic("error in creating logger, reason: " + err.Error())
+		panic("error in loading config, reason: " + err.Error())
 	}
 
 	logger, err := logger.New("caster", cfg.Caster.Debug)

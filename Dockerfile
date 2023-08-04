@@ -14,4 +14,5 @@ RUN apt-get -y update && apt-get -y install curl
 
 COPY --from=builder /caster ./
 
-CMD ["./caster", "run"]
+ENTRYPOINT ["./caster", "run"]
+CMD ["--config", "/etc/caster"]

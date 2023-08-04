@@ -2,7 +2,7 @@ caster:
   cpu: 100m
   memory: 100Mi
   size: 2
-  imageTag: 0.0.2
+  imageTag: v0.0.2
   configPath: "/etc/caster"
   port: 2376
   config:
@@ -47,7 +47,7 @@ deployments:
       - name: COLLECTOR_ZIPKIN_HTTP_PORT
         value: "9411"
     ports:
-      - name: "agent-zipkin-thrift"
+      - name: "agent-zkn-thrft"
         port: 5775
         protocol: UDP
       - name: "agent-compact"
@@ -70,7 +70,7 @@ deployments:
         port: 4317
       - name: "oltp-http"
         port: 4318
-      - name: "jaeger-collector-zipkin"
+      - name: "jgr-clctr-zkn"
         port: 9411
       
 configMap:
