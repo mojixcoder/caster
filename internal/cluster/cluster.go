@@ -103,7 +103,7 @@ func (c Cluster) NonLocalNodes() map[int]Node {
 	return nodes
 }
 
-// NewCluster returns a new memberlist cluster.
+// NewCluster returns a new cluster.
 func NewCluster() (Cluster, error) {
 	var cluster Cluster
 
