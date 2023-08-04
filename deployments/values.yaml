@@ -2,7 +2,7 @@ caster:
   cpu: 100m
   memory: 100Mi
   size: 2
-  imageTag: v0.0.2
+  imageTag: v0.0.3
   configPath: "/etc/caster"
   port: 2376
   config:
